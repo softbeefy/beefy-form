@@ -32,6 +32,8 @@ input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
 .gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
 .gal::-webkit-scrollbar{display:none}
 .gal img{flex:0 0 100%;height:250px;object-fit:contain;scroll-snap-align:center;background:var(--card)}
+.nav{position:absolute;top:107px;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.nav.l{left:8px}.nav.r{right:8px}
 .cnt{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:2px 8px;border-radius:99px}
 .row{display:flex;gap:10px;align-items:center;padding:12px;cursor:pointer}
 .row input{accent-color:var(--accent);width:18px;height:18px}
@@ -84,8 +86,8 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt1-jBgYblvMjawStkj
 const TOS_URL = "https://beefy.ju.mp/#commission";
 // Example images: upload them to the repo (folder img/) and list them here. Missing files are skipped.
 const TYPES = [
-  { v: "FULLBODY 80€ / x1 Character", t: "1 Character", p: "Fullbody · 80€", img: ["https://beefy.ju.mp/assets/images/gallery03/30db4d2b_original.jpg", "https://beefy.ju.mp/assets/images/gallery03/a1383001_original.jpg", "https://beefy.ju.mp/assets/images/gallery03/392b7506_original.jpg"] },
-  { v: "FULLBODY 120€ / x2 Characters", t: "2 Characters", p: "Fullbody · 120€", img: ["https://beefy.ju.mp/assets/images/gallery03/2e4e7d83.jpg", "https://beefy.ju.mp/assets/images/gallery03/74d7f104.jpg", "https://beefy.ju.mp/assets/images/gallery03/9e105828.jpg"] },
+  { v: "FULLBODY 80€ / x1 Character", t: "1 Character", p: "Fullbody · 80€", img: ["https://beefy.ju.mp/assets/images/gallery03/30db4d2b_original.jpg", "https://beefy.ju.mp/assets/images/gallery03/a1383001_original.jpg", "https://beefy.ju.mp/assets/images/gallery03/392b7506_original.jpg", "https://beefy.ju.mp/assets/images/gallery03/d3a674e9.jpg"] },
+  { v: "FULLBODY 120€ / x2 Characters", t: "2 Characters", p: "Fullbody · 120€", img: ["https://beefy.ju.mp/assets/images/gallery03/2e4e7d83.jpg", "https://beefy.ju.mp/assets/images/gallery03/74d7f104.jpg", "https://beefy.ju.mp/assets/images/gallery03/9e105828.jpg", "https://beefy.ju.mp/assets/images/gallery03/1250c7f3.jpg"] },
   { v: "FULLBODY / more than +3 Characters", t: "3+ Characters", p: "Fullbody · price to be discussed", img: [] }
 ];
 // ====================
@@ -117,10 +119,24 @@ TYPES.forEach(ty => {
   const o = document.createElement("div"); o.className = "opt";
   if (ty.img.length) {
     const g = document.createElement("div"); g.className = "gal";
-    const c = document.createElement("span"); c.className = "cnt";
-    const upd = () => { const n = g.children.length; if (!n) { g.remove(); c.remove(); return; } c.textContent = (Math.round(g.scrollLeft / g.clientWidth) + 1) + " / " + n; c.hidden = n < 2; };
+    const c = document.createElement("span"); c.className = "cnt"; c.hidden = true;
+    const nav = dir => {
+      const b = document.createElement("button"); b.type = "button"; b.hidden = true;
+      b.className = "nav " + (dir < 0 ? "l" : "r"); b.textContent = dir < 0 ? "‹" : "›";
+      b.setAttribute("aria-label", dir < 0 ? "Previous image" : "Next image");
+      b.onclick = () => g.scrollBy({ left: dir * g.clientWidth, behavior: "smooth" }); return b;
+    };
+    const bl = nav(-1), br = nav(1);
+    const upd = () => {
+      const n = g.children.length;
+      if (!n) { g.remove(); c.remove(); bl.remove(); br.remove(); return; }
+      const w = g.clientWidth; if (!w) return;   // form still hidden: ResizeObserver calls this again when it shows
+      c.textContent = Math.min(n, Math.round(g.scrollLeft / w) + 1) + " / " + n;
+      c.hidden = bl.hidden = br.hidden = n < 2;
+    };
     ty.img.forEach(src => { const im = new Image(); im.alt = ty.t + " example"; im.onerror = () => { im.remove(); upd(); }; im.onload = upd; im.src = src; g.appendChild(im); });
-    g.addEventListener("scroll", upd); o.append(g, c);
+    g.addEventListener("scroll", upd); new ResizeObserver(upd).observe(g);
+    o.append(g, c, bl, br);
   }
   const r = document.createElement("label"); r.className = "row";
   r.innerHTML = '<input type="radio" name="type"><div><b></b><span></span></div>';
